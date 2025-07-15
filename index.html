@@ -3,17 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой Telegram WebApp</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Telegram WebApp</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="script.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        button {
+            background-color: #0088cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        button:hover {
+            background-color: #0077bb;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .error {
+            color: #ff4444;
+            background-color: #ffeeee;
+        }
+        .success {
+            color: #00aa00;
+            background-color: #eeffee;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-    <h1>Привет, <span id="user-name">Пользователь</span>!</h1>
-    <p>Это простой пример Telegram WebApp</p>
-    <button id="main-button">Нажми меня</button>
-    <div id="result" class="hidden">Кнопка была нажата!</div>
-</div>
+<h1>Мой WebApp</h1>
+<p>Нажмите кнопку, чтобы отправить данные боту</p>
+
+<button id="sendButton">Отправить данные</button>
+
+<div id="status">Статус: готов к отправке</div>
+
+<script>
+    const sendButton = document.getElementById('sendButton');
+    const statusDiv = document.getElementById('status');
+
+    // Функция для отображения статуса
+    function showStatus(message, isError = false) {
+        statusDiv.textContent = message;
+        statusDiv.className = isError ? 'error' : 'success';
+    }
+
+    // Проверяем, доступен ли Telegram WebApp
+    function isTelegramWebAppReady() {
+        if (!window.Telegram || !Telegram.WebApp) {
+            showStatus('Ошибка: Telegram WebApp не инициализирован', true);
+            return false;
+        }
+        return true;
+    }
+
+    // Основная функция отправки данных
+    function sendDataToBot() {
+        try {
+            // Проверяем доступность WebApp
+            if (!isTelegramWebAppReady()) return;
+
+            showStatus('Отправка данных...');
+
+            // Создаем данные для отправки
+            const data = {
+                action: 'button_click',
+                timestamp: new Date().toISOString(),
+                user_id: Telegram.WebApp.initDataUnsafe.user?.id,
+                platform: navigator.platform
+            };
+
+            // Отправляем данные в бота
+            Telegram.WebApp.sendData(JSON.stringify(data));
+
+            // Закрываем WebApp (опционально)
+            // Telegram.WebApp.close();
+
+            showStatus('Данные успешно отправлены!');
+        } catch (error) {
+            showStatus(`Ошибка: ${error.message}`, true);
+            console.error('WebApp error:', error);
+        }
+    }
+
+    // Инициализация WebApp
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            if (isTelegramWebAppReady()) {
+                // Развернуть WebApp на весь экран
+                Telegram.WebApp.expand();
+
+                // Подписываемся на события viewport (для нативных приложений)
+                Telegram.WebApp.onEvent('viewportChanged', function() {
+                    console.log('Viewport changed');
+                });
+
+                // Назначаем обработчик кнопки
+                sendButton.addEventListener('click', sendDataToBot);
+
+                showStatus('WebApp готов к работе');
+            }
+        } catch (error) {
+            showStatus(`Ошибка инициализации: ${error.message}`, true);
+        }
+    });
+</script>
 </body>
 </html>
