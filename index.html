@@ -10,112 +10,160 @@
             font-family: Arial, sans-serif;
             padding: 20px;
             text-align: center;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
         }
         button {
-            background-color: #0088cc;
-            color: white;
+            background-color: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 12px 24px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 16px;
             margin: 20px 0;
+            transition: opacity 0.3s;
         }
-        button:hover {
-            background-color: #0077bb;
+        button:active {
+            opacity: 0.8;
         }
         #status {
             margin-top: 20px;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 10px;
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
         }
         .error {
             color: #ff4444;
-            background-color: #ffeeee;
         }
         .success {
             color: #00aa00;
-            background-color: #eeffee;
+        }
+        .loading {
+            color: #888888;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-<h1>Мой WebApp</h1>
-<p>Нажмите кнопку, чтобы отправить данные боту</p>
+<div id="app">
+    <h1>Мой WebApp</h1>
+    <p>Нажмите кнопку, чтобы отправить данные боту</p>
 
-<button id="sendButton">Отправить данные</button>
+    <button id="sendButton">Отправить данные</button>
 
-<div id="status">Статус: готов к отправке</div>
+    <div id="status" class="loading">Инициализация WebApp...</div>
+</div>
+
+<div id="unsupported" class="hidden">
+    <h2>Извините</h2>
+    <p>Это приложение работает только внутри Telegram</p>
+</div>
 
 <script>
+    // Элементы интерфейса
+    const appDiv = document.getElementById('app');
+    const unsupportedDiv = document.getElementById('unsupported');
     const sendButton = document.getElementById('sendButton');
     const statusDiv = document.getElementById('status');
 
-    // Функция для отображения статуса
-    function showStatus(message, isError = false) {
+    // Показываем статус
+    function showStatus(message, type = 'loading') {
         statusDiv.textContent = message;
-        statusDiv.className = isError ? 'error' : 'success';
+        statusDiv.className = type;
     }
 
-    // Проверяем, доступен ли Telegram WebApp
-    function isTelegramWebAppReady() {
-        if (!window.Telegram || !Telegram.WebApp) {
-            showStatus('Ошибка: Telegram WebApp не инициализирован', true);
-            return false;
-        }
-        return true;
-    }
-
-    // Основная функция отправки данных
-    function sendDataToBot() {
-        try {
-            // Проверяем доступность WebApp
-            if (!isTelegramWebAppReady()) return;
-
-            showStatus('Отправка данных...');
-
-            // Создаем данные для отправки
-            const data = {
-                action: 'button_click',
-                timestamp: new Date().toISOString(),
-                user_id: Telegram.WebApp.initDataUnsafe.user?.id,
-                platform: navigator.platform
-            };
-
-            // Отправляем данные в бота
-            Telegram.WebApp.sendData(JSON.stringify(data));
-
-            // Закрываем WebApp (опционально)
-            // Telegram.WebApp.close();
-
-            showStatus('Данные успешно отправлены!');
-        } catch (error) {
-            showStatus(`Ошибка: ${error.message}`, true);
-            console.error('WebApp error:', error);
-        }
+    // Проверяем, запущено ли в Telegram
+    function isTelegramWebApp() {
+        return window.Telegram && Telegram.WebApp && Telegram.WebApp.initData;
     }
 
     // Инициализация WebApp
-    document.addEventListener('DOMContentLoaded', function() {
+    function initWebApp() {
+        if (!isTelegramWebApp()) {
+            showUnsupported();
+            return false;
+        }
+
+        // Настраиваем интерфейс в соответствии с темой Telegram
+        document.body.className = Telegram.WebApp.colorScheme;
+
+        // Подписываемся на изменение темы
+        Telegram.WebApp.onEvent('themeChanged', updateTheme);
+
+        // Для нативных приложений важно вызвать expand()
+        Telegram.WebApp.expand();
+
+        // Включаем кнопку
+        sendButton.disabled = false;
+
+        showStatus('Готов к работе', 'success');
+        return true;
+    }
+
+    function updateTheme() {
+        document.body.className = Telegram.WebApp.colorScheme;
+    }
+
+    function showUnsupported() {
+        appDiv.classList.add('hidden');
+        unsupportedDiv.classList.remove('hidden');
+    }
+
+    // Функция отправки данных
+    async function sendDataToBot() {
         try {
-            if (isTelegramWebAppReady()) {
-                // Развернуть WebApp на весь экран
-                Telegram.WebApp.expand();
-
-                // Подписываемся на события viewport (для нативных приложений)
-                Telegram.WebApp.onEvent('viewportChanged', function() {
-                    console.log('Viewport changed');
-                });
-
-                // Назначаем обработчик кнопки
-                sendButton.addEventListener('click', sendDataToBot);
-
-                showStatus('WebApp готов к работе');
+            if (!isTelegramWebApp()) {
+                showStatus('Ошибка: WebApp не инициализирован', 'error');
+                return;
             }
+
+            sendButton.disabled = true;
+            showStatus('Отправка данных...', 'loading');
+
+            // Подготовка данных
+            const data = {
+                action: 'button_click',
+                time: new Date().toISOString(),
+                user_id: Telegram.WebApp.initDataUnsafe.user?.id,
+                platform: navigator.userAgent,
+                theme_params: Telegram.WebApp.themeParams
+            };
+
+            // Критически важный момент для нативных приложений
+            // Добавляем небольшую задержку перед отправкой
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Отправляем данные
+            Telegram.WebApp.sendData(JSON.stringify(data));
+
+            // Закрываем WebApp через 1 секунду (опционально)
+            setTimeout(() => {
+                Telegram.WebApp.close();
+            }, 1000);
+
         } catch (error) {
-            showStatus(`Ошибка инициализации: ${error.message}`, true);
+            console.error('Ошибка отправки:', error);
+            showStatus(`Ошибка: ${error.message}`, 'error');
+            sendButton.disabled = false;
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        // Проверяем, что мы в Telegram
+        if (initWebApp()) {
+            // Назначаем обработчик кнопки
+            sendButton.addEventListener('click', sendDataToBot);
         }
     });
+
+    // Альтернативный способ инициализации для нативных приложений
+    if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.ready();
+    }
 </script>
 </body>
 </html>
