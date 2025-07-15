@@ -16,26 +16,16 @@ document.getElementById('main-button').addEventListener('click', () => {
     const resultElement = document.getElementById('result');
     resultElement.classList.remove('hidden');
 
-    // Формируем данные для отправки
-    const data = {
-        action: 'button_clicked',
-        timestamp: Date.now(),
-        user_id: user?.id || null
-    };
+    // Можно отправить данные обратно в бота
+    tg.sendData(JSON.stringify({action: 'button_clicked'}));
 
-    // Отправляем данные в бота
-    tg.sendData(JSON.stringify(data));
-
-    // Добавляем небольшую задержку перед закрытием
+    // Закрыть WebApp через 2 секунды
     setTimeout(() => {
         tg.close();
-    }, 300);
+    }, 2000);
 });
 
-// Обработчик события закрытия (для отладки)
+// Можно добавить обработчик события закрытия
 tg.onEvent('viewportChanged', () => {
     console.log('Viewport changed');
 });
-
-// Проверяем, что WebApp инициализирован
-console.log('WebApp initialized:', tg.initDataUnsafe);
