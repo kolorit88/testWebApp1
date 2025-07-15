@@ -19,10 +19,6 @@ document.getElementById('main-button').addEventListener('click', () => {
     // Можно отправить данные обратно в бота
     tg.sendData(JSON.stringify({action: 'button_clicked'}));
 
-    // Закрыть WebApp через 2 секунды
-    setTimeout(() => {
-        tg.close();
-    }, 2000);
 });
 
 // Можно добавить обработчик события закрытия
