@@ -157,10 +157,9 @@
 
             // 2. Формируем данные
             const payload = {
-                action: 'webapp_action',
-                time: new Date().toISOString(),
+                action: 'game_over',
                 user: Telegram.WebApp.initDataUnsafe.user,
-                initData: Telegram.WebApp.initData,
+                result: 600,
                 platform: navigator.userAgent
             };
 
